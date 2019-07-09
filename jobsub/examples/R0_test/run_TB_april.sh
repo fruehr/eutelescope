@@ -11,7 +11,7 @@ for i in "${array[@]}"; do
    
    # run for alignment stuff
    #cp geometry/gear-beforeAlign-R0.xml  geometry/tempGear-$i.xml
-   #js noisypixel $i
+   js noisypixel $i
    js clustering $i
    #js hitmaker $i
    #cp geometry/tempGear-${i}_pre.xml  geometry/tempGear-$i.xml
