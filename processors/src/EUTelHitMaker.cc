@@ -59,7 +59,7 @@ using namespace eutelescope;
 EUTelHitMaker::EUTelHitMaker()
     : Processor("EUTelHitMaker"), _pulseCollectionName(),
       _hitCollectionName(), _switchLocalCoordinates(false), _histogramSwitch(true),
-      _iRun(0), _iEvt(0), _alreadyBookedSensorID() {
+      _iRun(0), _iEvt(0), _radialIDVec(), _alreadyBookedSensorID() {
  
   _description = "EUTelHitMaker is responsible to translate cluster "
                  "centers from the local frame of reference \n to the external "
@@ -86,6 +86,11 @@ EUTelHitMaker::EUTelHitMaker()
 			    "Switch for histogram plotting (default: true)",
 			    _histogramSwitch,
 			    true);
+	
+	registerOptionalParameter("RadialIDVec",
+			      "Use radial reconstruction for these sensor IDs",
+			      _radialIDVec, 
+			      std::vector<int>());
 }
 
 void EUTelHitMaker::init() {
@@ -125,9 +130,8 @@ void EUTelHitMaker::processRunHeader(LCRunHeader *rdr) {
 }
 
 void EUTelHitMaker::processEvent(LCEvent *event) {
-
+  
   ++_iEvt;
-
   EUTelEventImpl *evt = static_cast<EUTelEventImpl *>(event);
 
   if(evt->getEventType() == kEORE) {
@@ -219,7 +223,7 @@ void EUTelHitMaker::processEvent(LCEvent *event) {
       if(pixelType == kEUTelGenericSparsePixel) {
         EUTelGenericSparseClusterImpl<EUTelGenericSparsePixel> cluster(
             trackerData);
-        cluster.getCenterOfGravity(xPos, yPos);
+        cluster.getCenterOfGravity(xPos, yPos);                                                                                                   
 
         //for non-geometric clusters: getCenterOfGravity will return it in
         //pixel indices space, i.e have to transform into mm via the dimensions
@@ -276,44 +280,80 @@ void EUTelHitMaker::processEvent(LCEvent *event) {
         }
       }
 
-      float xShift = 0.;
-      float yShift = 0.;
-      cluster->getCenterOfGravityShift(xShift, yShift);
-      double xCorrection = static_cast<double>(xShift);
-      double yCorrection = static_cast<double>(yShift);
-
-      //rescale the pixel number in millimeter
-      double xDet =
-          (static_cast<double>(xCluSeed) + xCorrection + 0.5) * xPitch;
-      double yDet =
-          (static_cast<double>(yCluSeed) + yCorrection + 0.5) * yPitch;
-
-      //FIXME? check the hack from Havard:
-      float xCoG(0.0f), yCoG(0.0f);
-      cluster->getCenterOfGravity(xCoG, yCoG);
-      xDet = (xCoG + 0.5) * xPitch;
-      yDet = (yCoG + 0.5) * yPitch;
-
-      streamlog_out(DEBUG1)
-          << "cluster[" << setw(4) << iCluster << "] on sensor[" << setw(3)
-          << sensorID << "] at [" << setw(8) << setprecision(3) << xCoG << ":"
-          << setw(8) << setprecision(3) << yCoG << "]"
-          << " ->  [" << setw(8) << setprecision(3) << xDet << ":" << setw(8)
-          << setprecision(3) << yDet << "]" << std::endl;
-
-      //We have calculated the cluster hit position in terms of distance along
-      //the X and Y axis.
-      //However we still do not have the sensor centre as the origin of the
-      //coordinate system.
-      //To do this we need to deduct xSize/2 and ySize/2 for the respective
-      //cluster X/Y position
-
-      telPos[0] = xDet - xSize / 2.;
-      telPos[1] = yDet - ySize / 2.;
-      telPos[2] = 0.;
-
-      delete cluster;
-      cluster = nullptr;
+      if ( find(_radialIDVec.begin(), _radialIDVec.end(), sensorID) == _radialIDVec.end() ) {
+        // not using radial geometry
+          float xShift = 0.;
+          float yShift = 0.;
+          cluster->getCenterOfGravityShift(xShift, yShift);
+          double xCorrection = static_cast<double>(xShift);
+          double yCorrection = static_cast<double>(yShift);
+          //rescale the pixel number in millimeter
+          double xDet =
+              (static_cast<double>(xCluSeed) + xCorrection + 0.5) * xPitch;
+          double yDet =
+              (static_cast<double>(yCluSeed) + yCorrection + 0.5) * yPitch;
+    
+          //FIXME? check the hack from Havard:
+          float xCoG(0.0f), yCoG(0.0f);
+          cluster->getCenterOfGravity(xCoG, yCoG);
+          xDet = (xCoG + 0.5) * xPitch;
+          yDet = (yCoG + 0.5) * yPitch;
+    
+          telPos[0] = xDet - xSize / 2.;
+          telPos[1] = yDet - ySize / 2.;
+          telPos[2] = 0.;
+    
+          delete cluster;
+          cluster = nullptr;
+      } else {
+        // using radial geometry
+          float xCoG(0.0f), yCoG(0.0f);
+          cluster->getCenterOfGravity(xCoG, yCoG);
+          //streamlog_out(MESSAGE5) << "Cluster CoG in strip #s: " << xCoG << std::endl;
+          
+          // TODO: read this from annulus file
+          double rCentre = 438.614;
+          double stereoAngle = 0.02;
+          double phiPitch = 0.0001718368;
+          double rMid = (488.422 + 456.510) / 2;
+          int nStrips = 1152;
+          
+          double cosA = cos( stereoAngle );
+          double sinA = sin( stereoAngle );
+          double sinA2 = sin(stereoAngle/2);
+          
+          
+          // calculation from ATL-UPGRADE-PUB-2013-002
+          double phiDash = ( nStrips/2 - xCoG + 0.5) * phiPitch; // inverted readout order
+          double b = -2. * ( 2 * rCentre * sinA2 ) * sin( stereoAngle/2 + phiDash);
+          double c = pow( ( 2 * rCentre * sinA2 ), 2) - rMid * rMid;
+          double rDash = 0.5 * ( -b + sqrt( b * b - 4 * c) );
+          
+          double xDash = rDash * cos( phiDash ) - rCentre;
+          double yDash = rDash * sin( phiDash );
+          
+          // geometry defined with coordinate system
+          //      x A
+          //        |
+          //        |
+          //  y <---o
+          // so need to swap
+          // in addition rotate by stereo angle
+          double yDet = cosA * xDash - sinA * yDash;
+          double xDet = sinA * xDash + cosA * yDash;
+          
+          // simple approximation to compare to for debugging, read-order inversion built in
+          // xDet = sin( -1. * (xCoG - nStrips/2) * phiPitch - stereoAngle ) * rMid + sin(stereoAngle) * rMid;
+          // yDet = cos( -1. * (xCoG - nStrips/2) * phiPitch - stereoAngle ) * rMid - cos(stereoAngle) * rMid;
+    
+          telPos[0] = xDet;
+          telPos[1] = yDet;
+          telPos[2] = 0.;
+          //streamlog_out(MESSAGE5) << "Cluster CoG in x: " << telPos[0] << "    Cluster CoG in y: " << telPos[1] << std::endl;
+          delete cluster;
+          cluster = nullptr;
+      }
+      
     }//[END] cluster type
 
 	//plot hits in the EUTelescope local frame; this frame has the
