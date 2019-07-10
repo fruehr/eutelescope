@@ -325,6 +325,12 @@ namespace eutelescope {
 
     //! Event number
     int _iEvt;
+    
+    //! Radial Geometry Sensor ID vector
+    /*! Passed as a argument via the steering file, here you
+     *  specify for which sensors radial geometry should be used
+     */
+    std::vector<int> _radialIDVec;
 
     //! Set of booked histogram
     /*  This helper set is used by the on-the-fly histogram booking
