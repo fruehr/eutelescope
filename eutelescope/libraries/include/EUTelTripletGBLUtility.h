@@ -310,6 +310,8 @@ protected:
     AIDA::IHistogram1D * DUTMatchingResidualX;
     AIDA::IHistogram1D * DUTMatchingResidualY;
     AIDA::IHistogram1D * DUTHitNumber;
+    AIDA::IHistogram1D * TPMatchingResidualX;
+    AIDA::IHistogram1D * TPMatchingResidualY;
 };
 
 }
