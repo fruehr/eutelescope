@@ -99,6 +99,12 @@ void EUTelTripletGBLUtility::bookHistos(){
   DUTMatchingResidualY = AIDAProcessor::histogramFactory(parent)->createHistogram1D( "Cuts/DUTMatchingResidualCutY", 1000, -3, 3 ); //binning to be reviewed
   DUTMatchingResidualY->setTitle( "DUT Matching Residual local Y;DUT Matching Residual local Y [mm];Counts" );
   
+  TPMatchingResidualX = AIDAProcessor::histogramFactory(parent)->createHistogram1D( "Cuts/TPMatchingResidualCutX", 1000, -3, 3 ); //binning to be reviewed
+  TPMatchingResidualX->setTitle( "TP Matching Residual local X;TP Matching Residual local X [mm];Counts" );
+  
+  TPMatchingResidualY = AIDAProcessor::histogramFactory(parent)->createHistogram1D( "Cuts/TPMatchingResidualCutY", 1000, -3, 3 ); //binning to be reviewed
+  TPMatchingResidualY->setTitle( "TP Matching Residual local Y;TP Matching Residual local Y [mm];Counts" );
+  
   DUTHitNumber = AIDAProcessor::histogramFactory(parent)->createHistogram1D( "Cuts/DUTHitNumber", 21, -0.5, 20.5 ); //binning to be reviewed
   DUTHitNumber->setTitle( "Number of Hits matched to a track per DUT ID;DUT ID;Number of Hits matched to a track" );
 
@@ -201,14 +207,19 @@ bool EUTelTripletGBLUtility::AttachDUT(EUTelTripletGBLUtility::triplet & triplet
 			auto hitY = hit.y;
 			auto distX = fabs(trX-hitX);
 			auto distY = fabs(trY-hitY);
-            double dist = distX*distX + distY*distY;
-			DUTMatchingResidualX->fill(trX-hitX);
-			DUTMatchingResidualY->fill(trY-hitY);
-			if(distX <= dist_cuts.at(0) && distY <= dist_cuts.at(1) && dist < minDist ){
-				minHitIx = static_cast<int>(ix);
-				DUTHitNumber->fill(dutID);
-				minDist = dist;
-			}
+      double dist = distX*distX + distY*distY;
+      if (hit.plane != 7) {
+        DUTMatchingResidualX->fill(trX-hitX);
+        DUTMatchingResidualY->fill(trY-hitY);
+        if(distX <= dist_cuts.at(0) && distY <= dist_cuts.at(1) && dist < minDist ){
+          minHitIx = static_cast<int>(ix);
+          DUTHitNumber->fill(dutID);
+          minDist = dist;
+        }
+			} else {
+			  TPMatchingResidualX->fill(trX-hitX);
+        TPMatchingResidualY->fill(trY-hitY);
+			}	  
 		}
 		++ix;
 	}

@@ -13,10 +13,10 @@ for i in "${array[@]}"; do
    #cp geometry/gear-beforeAlign-R0.xml  geometry/tempGear-$i.xml
    #js noisypixel $i
    #js clustering $i
-   js hitmaker $i
+   #js hitmaker $i
    #cp geometry/tempGear-${i}_pre.xml  geometry/tempGear-$i.xml
 	 
-   #js alignGBL1 $i
+   js alignGBL1 $i
    #cp geometry/alignedGear-iter_temp.xml geometry/tempGear-$i.xml
 	 #js fitGBL $i
 
