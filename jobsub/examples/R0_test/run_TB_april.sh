@@ -10,14 +10,16 @@ alias js="jobsub -g -c config.cfg -csv runlist.csv"
 for i in "${array[@]}"; do
    
    # run for alignment stuff
-   #cp geometry/gear-beforeAlign-R0.xml  geometry/tempGear-$i.xml
+   #cp gear/gear-beforeAlign-R0.xml  gear/tempGear-$i.xml
    #js noisypixel $i
    #js clustering $i
    #js hitmaker $i
-   #cp geometry/tempGear-${i}_pre.xml  geometry/tempGear-$i.xml
+   cp gear/tempGear-${i}_pre.xml  gear/tempGear-$i.xml
+   #js hitmaker $i
 	 
    js alignGBL1 $i
-   #cp geometry/alignedGear-iter_temp.xml geometry/tempGear-$i.xml
+   #cp gear/tempGear-${i}_GBL1.xml gear/tempGear-$i.xml
+   #js alignGBL2 $i
 	 #js fitGBL $i
 
 
